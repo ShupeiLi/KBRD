@@ -196,7 +196,7 @@ def save_best_valid(model_file, best_valid):
     f.close()
 
 
-class TrainLoop():
+class TrainLoop:
     def __init__(self, opt):
         # if python is called from a non-interactive shell, like a bash script,
         # it will by-default ignore SIGINTs, and KeyboardInterrupt exceptions are

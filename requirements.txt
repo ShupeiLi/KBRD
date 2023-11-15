@@ -20,3 +20,6 @@ sphinx_rtd_theme
 tqdm
 websocket-client
 websocket-server
+gensim
+networkx
+tensorboardX
