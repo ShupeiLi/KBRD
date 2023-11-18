@@ -20,6 +20,6 @@ sphinx_rtd_theme
 tqdm
 websocket-client
 websocket-server
-gensim==4.0.0
-networkx==2.5
-torch_geometric
+gensim
+networkx
+tensorboardX

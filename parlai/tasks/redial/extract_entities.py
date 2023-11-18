@@ -51,6 +51,7 @@ def _tags(split, tags_dict, text_dict):
                 for tag in tags:
                     tags_dict[tag] += 1
 
+
 tags_dict = defaultdict(int)
 text_dict = {}
 for split in ['train', 'valid', 'test']:

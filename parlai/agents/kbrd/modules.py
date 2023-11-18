@@ -1,14 +1,9 @@
 import math
 from collections import defaultdict
 
-import networkx as nx
-import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from sklearn.metrics import roc_auc_score
-from torch_geometric.nn.conv.gat_conv import GATConv
-from torch_geometric.nn.conv.gcn_conv import GCNConv
 from torch_geometric.nn.conv.rgcn_conv import RGCNConv
 
 
@@ -18,6 +13,7 @@ def kaiming_reset_parameters(linear_module):
         fan_in, _ = nn.init._calculate_fan_in_and_fan_out(linear_module.weight)
         bound = 1 / math.sqrt(fan_in)
         nn.init.uniform_(linear_module.bias, -bound, bound)
+
 
 class SelfAttentionLayer(nn.Module):
     def __init__(self, dim, da, alpha=0.2, dropout=0.5):
@@ -36,6 +32,7 @@ class SelfAttentionLayer(nn.Module):
         e = torch.matmul(torch.tanh(torch.matmul(h, self.a)), self.b).squeeze(dim=1)
         attention = F.softmax(e)
         return torch.matmul(attention, h)
+
 
 def _edge_list(kg, n_entity):
     edge_list = []
@@ -65,16 +62,17 @@ def _edge_list(kg, n_entity):
 
     return [(h, t, relation_idx[r]) for h, t, r in edge_list if relation_cnt[r] > 1000], len(relation_idx)
 
+
 class KBRD(nn.Module):
     def __init__(
-        self,
-        n_entity,
-        n_relation,
-        dim,
-        kg,
-        entity_kg_emb,
-        entity_text_emb,
-        num_bases
+            self,
+            n_entity,
+            n_relation,
+            dim,
+            kg,
+            entity_kg_emb,
+            entity_text_emb,
+            num_bases
     ):
         super(KBRD, self).__init__()
 
@@ -110,9 +108,9 @@ class KBRD(nn.Module):
         return triples
 
     def forward(
-        self,
-        seed_sets: list,
-        labels: torch.LongTensor,
+            self,
+            seed_sets: list,
+            labels: torch.LongTensor,
     ):
         # [batch size, dim]
         u_emb, nodes_features = self.user_representation(seed_sets)
@@ -129,7 +127,7 @@ class KBRD(nn.Module):
 
         user_representation_list = []
         for i, seed_set in enumerate(seed_sets):
-            if seed_set == []:
+            if not seed_set:
                 user_representation_list.append(torch.zeros(self.dim).cuda())
                 continue
             user_representation = nodes_features[seed_set]

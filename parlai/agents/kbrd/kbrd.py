@@ -1,23 +1,14 @@
-import copy
 import os
 import pickle as pkl
-import re
 from collections import defaultdict
 
-import numpy as np
-import torch
-from torch import nn
-from torch.nn import functional as F
-from sklearn.feature_extraction.text import TfidfVectorizer
-from gensim.models.doc2vec import TaggedDocument, Doc2Vec
 import nltk
-
+import torch
+from gensim.models.doc2vec import TaggedDocument, Doc2Vec
 
 from parlai.core.torch_agent import Output, TorchAgent
 from parlai.core.utils import round_sigfigs
-
 from .modules import KBRD
-
 
 
 def _load_kg_embeddings(entity2entityId, dim, embedding_path):
@@ -28,16 +19,18 @@ def _load_kg_embeddings(entity2entityId, dim, embedding_path):
             entity = line[0]
             if entity not in entity2entityId:
                 continue
-            entityId = entity2entityId[entity]
+            entity_id = entity2entityId[entity]
             embedding = torch.Tensor(list(map(float, line[1:])))
-            kg_embeddings[entityId] = embedding
+            kg_embeddings[entity_id] = embedding
     return kg_embeddings
+
 
 def _load_text_embeddings(entity2entityId, dim, abstract_path):
     entities = []
     texts = []
     sent_tok = nltk.data.load('tokenizers/punkt/english.pickle')
     word_tok = nltk.tokenize.treebank.TreebankWordTokenizer()
+
     def nltk_tokenize(text):
         return [token for sent in sent_tok.tokenize(text)
                 for token in word_tok.tokenize(sent)]
@@ -45,10 +38,10 @@ def _load_text_embeddings(entity2entityId, dim, abstract_path):
     with open(abstract_path, 'r') as f:
         for line in f.readlines():
             try:
-                entity = line[:line.index('>')+1]
+                entity = line[:line.index('>') + 1]
                 if entity not in entity2entityId:
                     continue
-                line = line[line.index('> "')+2:len(line)-line[::-1].index('@')-1]
+                line = line[line.index('> "') + 2:len(line) - line[::-1].index('@') - 1]
                 entities.append(entity)
                 texts.append(line.replace('\\', ''))
             except Exception:
@@ -70,6 +63,7 @@ def _load_text_embeddings(entity2entityId, dim, abstract_path):
         full_text_embeddings[entity2entityId[entity]] = torch.from_numpy(model.docvecs[i])
 
     return full_text_embeddings
+
 
 class KbrdAgent(TorchAgent):
     @classmethod
@@ -152,9 +146,7 @@ class KbrdAgent(TorchAgent):
         differ from a truly independent measurement.
         """
         base = super().report()
-        m = {}
-        m["num_tokens"] = self.counts["num_tokens"]
-        m["num_batches"] = self.counts["num_batches"]
+        m = {"num_tokens": self.counts["num_tokens"], "num_batches": self.counts["num_batches"]}
         m["loss"] = self.metrics["loss"] / m["num_batches"]
         m["base_loss"] = self.metrics["base_loss"] / m["num_batches"]
         m["acc"] = self.metrics["acc"] / m["num_tokens"]
@@ -202,7 +194,7 @@ class KbrdAgent(TorchAgent):
         labels_match = list(map(int, obs['label_candidates'][2].split()))
         entities_match = list(map(int, obs['label_candidates'][3].split()))
 
-        if labels_match == []:
+        if not labels_match:
             del obs["text"], obs[label_type]
             return obs
 

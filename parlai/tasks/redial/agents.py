@@ -21,13 +21,13 @@ def _path(opt):
     # set up paths to data (specific to each dataset)
     dt = opt["datatype"].split(":")[0]
     return (
-        os.path.join(opt["datapath"], "redial", f"{dt}_data.jsonl"),
-        os.path.join(opt["datapath"], "redial", "movies_with_mentions.csv"),
-        os.path.join(opt["datapath"], "redial", "id2entity.pkl"),
-        os.path.join(opt["datapath"], "redial", "entity_dict.pkl"),
-        os.path.join(opt["datapath"], "redial", "text_dict.pkl"),
-        os.path.join(opt["datapath"], "redial", "entity2entityId.pkl"),
-        os.path.join(opt["datapath"], "redial", "relation2relationId.pkl"),
+        os.path.join(opt["datapath"], "../../../data/redial", f"{dt}_data.jsonl"),
+        os.path.join(opt["datapath"], "../../../data/redial", "movies_with_mentions.csv"),
+        os.path.join(opt["datapath"], "../../../data/redial", "id2entity.pkl"),
+        os.path.join(opt["datapath"], "../../../data/redial", "entity_dict.pkl"),
+        os.path.join(opt["datapath"], "../../../data/redial", "text_dict.pkl"),
+        os.path.join(opt["datapath"], "../../../data/redial", "entity2entityId.pkl"),
+        os.path.join(opt["datapath"], "../../../data/redial", "relation2relationId.pkl"),
     )
 
 
