@@ -5,6 +5,7 @@ import pickle as pkl
 import random
 import re
 from collections import defaultdict
+import sys
 
 import parlai.core.build_data as build_data
 
@@ -16,7 +17,7 @@ def _split_data(redial_path):
         data.append(json.loads(line))
     random.shuffle(data)
     n_data = len(data)
-    split_data = [data[: int(0.9 * n_data)], data[int(0.9 * n_data) :]]
+    split_data = [data[: int(0.9 * n_data)], data[int(0.9 * n_data):]]
 
     with open(os.path.join(redial_path, "train_data.jsonl"), "w") as outfile:
         for example in split_data[0]:
@@ -63,8 +64,8 @@ def _entity2movie(entity, abstract=""):
     return movie, year, definitely_is_a_film
 
 
-DBPEDIA_ABSTRACT_PATH = "dbpedia/short_abstracts_en.ttl"
-DBPEDIA_PATH = "dbpedia/mappingbased_objects_en.ttl"
+DBPEDIA_ABSTRACT_PATH = "/home/fangtian/Documents/work/master-thesis/KBRD/dbpedia/short_abstracts_en.ttl"
+DBPEDIA_PATH = "/home/fangtian/Documents/work/master-thesis/KBRD/dbpedia/mappingbased_objects_en.ttl"
 
 
 def _build_dbpedia(dbpedia_path):
@@ -74,8 +75,8 @@ def _build_dbpedia(dbpedia_path):
         for line in f.readlines():
             if line.startswith("#"):
                 continue
-            entity, line = line[: line.index(" ")], line[line.index(" ") + 1 :]
-            _, line = line[: line.index(" ")], line[line.index(" ") + 1 :]
+            entity, line = line[: line.index(" ")], line[line.index(" ") + 1:]
+            _, line = line[: line.index(" ")], line[line.index(" ") + 1:]
             abstract = line[:-4]
             movie, year, definitely_is_a_film = _entity2movie(entity, abstract)
             if (movie, year) not in movie2entity or definitely_is_a_film:
@@ -129,7 +130,7 @@ def _extract_subkg(kg, seed_set, n_hop):
 
 def build(opt):
     # get path to data directory
-    dpath = os.path.join(opt["datapath"], "redial")
+    dpath = os.path.join(opt["datapath"], "../../../data/redial")
     # define version if any
     version = None
 
@@ -230,3 +231,7 @@ def build(opt):
 
         # mark the data as built
         build_data.mark_done(dpath, version_string=version)
+
+
+sys.path.append('/home/fangtian/Documents/work/master-thesis/KBRD')
+build({'datapath': './'})
