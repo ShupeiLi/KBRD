@@ -129,7 +129,7 @@ def _extract_subkg(kg, seed_set, n_hop):
 
 def build(opt):
     # get path to data directory
-    dpath = os.path.join(opt["datapath"], "../../../data/redial")
+    dpath = os.path.join(opt["datapath"], "redial")
     # define version if any
     version = None
 
