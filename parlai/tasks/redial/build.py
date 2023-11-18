@@ -5,7 +5,6 @@ import pickle as pkl
 import random
 import re
 from collections import defaultdict
-import sys
 
 import parlai.core.build_data as build_data
 
@@ -64,8 +63,8 @@ def _entity2movie(entity, abstract=""):
     return movie, year, definitely_is_a_film
 
 
-DBPEDIA_ABSTRACT_PATH = "/home/fangtian/Documents/work/master-thesis/KBRD/dbpedia/short_abstracts_en.ttl"
-DBPEDIA_PATH = "/home/fangtian/Documents/work/master-thesis/KBRD/dbpedia/mappingbased_objects_en.ttl"
+DBPEDIA_ABSTRACT_PATH = "dbpedia/short_abstracts_en.ttl"
+DBPEDIA_PATH = "dbpedia/mappingbased_objects_en.ttl"
 
 
 def _build_dbpedia(dbpedia_path):
@@ -233,5 +232,4 @@ def build(opt):
         build_data.mark_done(dpath, version_string=version)
 
 
-sys.path.append('/home/fangtian/Documents/work/master-thesis/KBRD')
-build({'datapath': './'})
+# build({'datapath': './'})
