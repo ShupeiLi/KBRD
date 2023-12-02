@@ -1,6 +1,7 @@
 import os
 import pickle as pkl
 from collections import defaultdict
+import math
 
 import nltk
 import torch
@@ -151,12 +152,12 @@ class KbrdAgent(TorchAgent):
         m["base_loss"] = self.metrics["base_loss"] / m["num_batches"]
         m["acc"] = self.metrics["acc"] / m["num_tokens"]
         m["auc"] = self.metrics["auc"] / m["num_tokens"]
-        # Top-k recommendation Recall / MRR
+        # Top-k recommendation Recall / MRR / NDCG
         for x in sorted(self.metrics):
             if x.startswith("recall") and self.counts[x] > 200:
                 m[x] = self.metrics[x] / self.counts[x]
                 m["num_tokens_" + x] = self.counts[x]
-            if x.startswith("mrr") and self.counts[x] > 0:
+            if (x.startswith("mrr") or x.startswith("ndcg")) and self.counts[x] > 0:
                 m[x] = self.metrics[x] / self.counts[x]
                 m["num_tokens_" + x] = self.counts[x]
         for k, v in m.items():
@@ -301,6 +302,14 @@ class KbrdAgent(TorchAgent):
             self.counts[f"mrr@10"] += 1
             self.counts[f"mrr@50"] += 1
 
+            # NDCG
+            self.metrics["ndcg@1"] += KbrdAgent.ndcg_calculation(target_idx, pred_idx[b], 1)
+            self.metrics["ndcg@10"] += KbrdAgent.ndcg_calculation(target_idx, pred_idx[b], 10)
+            self.metrics["ndcg@50"] += KbrdAgent.ndcg_calculation(target_idx, pred_idx[b], 50)
+            self.counts[f"ndcg@1"] += 1
+            self.counts[f"ndcg@10"] += 1
+            self.counts[f"ndcg@50"] += 1
+
         return Output(list(map(lambda x: str(self.movie_ids[x]), outputs.argmax(dim=1).tolist())))
 
     @staticmethod
@@ -309,4 +318,12 @@ class KbrdAgent(TorchAgent):
         if target_idx in pred_idx[:k].tolist():
             rank = pred_idx.tolist().index(target_idx)
             return 1 / (rank + 1)
+        return 0
+
+    @staticmethod
+    def ndcg_calculation(target_idx, pred_idx, k):
+        """Compute NDCG"""
+        if target_idx in pred_idx[:k].tolist():
+            rank = pred_idx.tolist().index(target_idx)
+            return 1 / math.log2(rank + 2)
         return 0
