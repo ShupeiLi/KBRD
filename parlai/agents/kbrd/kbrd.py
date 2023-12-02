@@ -151,9 +151,12 @@ class KbrdAgent(TorchAgent):
         m["base_loss"] = self.metrics["base_loss"] / m["num_batches"]
         m["acc"] = self.metrics["acc"] / m["num_tokens"]
         m["auc"] = self.metrics["auc"] / m["num_tokens"]
-        # Top-k recommendation Recall
+        # Top-k recommendation Recall / MRR
         for x in sorted(self.metrics):
             if x.startswith("recall") and self.counts[x] > 200:
+                m[x] = self.metrics[x] / self.counts[x]
+                m["num_tokens_" + x] = self.counts[x]
+            if x.startswith("mrr") and self.counts[x] > 0:
                 m[x] = self.metrics[x] / self.counts[x]
                 m["num_tokens_" + x] = self.counts[x]
         for k, v in m.items():
@@ -289,4 +292,21 @@ class KbrdAgent(TorchAgent):
             self.counts[f"recall@1"] += 1
             self.counts[f"recall@10"] += 1
             self.counts[f"recall@50"] += 1
+
+            # MRR
+            self.metrics["mrr@1"] += KbrdAgent.mrr_calculation(target_idx, pred_idx[b], 1)
+            self.metrics["mrr@10"] += KbrdAgent.mrr_calculation(target_idx, pred_idx[b], 10)
+            self.metrics["mrr@50"] += KbrdAgent.mrr_calculation(target_idx, pred_idx[b], 50)
+            self.counts[f"mrr@1"] += 1
+            self.counts[f"mrr@10"] += 1
+            self.counts[f"mrr@50"] += 1
+
         return Output(list(map(lambda x: str(self.movie_ids[x]), outputs.argmax(dim=1).tolist())))
+
+    @staticmethod
+    def mrr_calculation(target_idx, pred_idx, k):
+        """Compute mean reciprocal rank (MRR)"""
+        if target_idx in pred_idx[:k].tolist():
+            rank = pred_idx.tolist().index(target_idx)
+            return 1 / (rank + 1)
+        return 0
