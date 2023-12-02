@@ -30,7 +30,7 @@ class SelfAttentionLayer(nn.Module):
     def forward(self, h):
         N = h.shape[0]
         e = torch.matmul(torch.tanh(torch.matmul(h, self.a)), self.b).squeeze(dim=1)
-        attention = F.softmax(e)
+        attention = F.softmax(e, dim=-1)
         return torch.matmul(attention, h)
 
 
