@@ -23,6 +23,14 @@ except ImportError:
     # We'll just turn off things, but we might want to warn the user
     nltkbleu = None
 
+try:
+    import rouge
+except ImportError:
+    # User doesn't have py-rouge installed, so we can't use it.
+    # We'll just turn off rouge computations
+    rouge = None
+
+
 re_art = re.compile(r'\b(a|an|the)\b')
 re_punc = re.compile(r'[!"#$%&()*+,-./:;<=>?@\[\]\\^`{|}~_\']')
 
@@ -85,7 +93,7 @@ def _f1_score(guess, answers):
     return max(f1 for p, r, f1 in scores)
 
 
-def _bleu(guess, answers):
+def _bleu(guess, answers, k=4):
     """Compute approximate BLEU score between guess and a set of answers."""
     if nltkbleu is None:
         # bleu library not installed, just return a default value
@@ -96,11 +104,56 @@ def _bleu(guess, answers):
     # going to be slower than fairseq's (which is written in C), but fairseq's
     # requires that everything be in arrays of ints (i.e. as tensors). NLTK's
     # works with strings, which is better suited for this module.
+    weights = [1 / k for _ in range(k)]
     return nltkbleu.sentence_bleu(
         [normalize_answer(a).split(" ") for a in answers],
         normalize_answer(guess).split(" "),
         smoothing_function=nltkbleu.SmoothingFunction(epsilon=1e-12).method1,
+        weights=weights,
     )
+
+
+def _rouge(guess, answers, measure='r'):
+    """Compute ROUGE score."""
+    evaluator = rouge.Rouge(
+                metrics=['rouge-n', 'rouge-l'], max_n=2
+            )
+    try:
+        scores = [
+            evaluator.get_scores(
+                normalize_answer(guess), normalize_answer(a)
+            )
+            for a in answers
+        ]
+    except LookupError:
+        return [None, None, None, None, None]
+
+    scores_rouge1 = max(score['rouge-1'][measure] for score in scores)
+    scores_rouge2 = max(score['rouge-2'][measure] for score in scores)
+    scores_rougeL = max(score['rouge-l'][measure] for score in scores)
+
+    return [scores_rouge1, scores_rouge2, scores_rougeL]
+
+
+def _ngram(seq, n):
+    """Extract n-gram subsequences from a given sequence."""
+    for i in range(len(seq) - n + 1):
+        yield tuple(seq[i : i + n])
+
+
+def _intra_distinct(guess, ngram=1):
+    """Compute intra-distinct."""
+    tokens = normalize_answer(guess).split()
+    counts = Counter(_ngram(tokens, ngram))
+    # computed per-example, macro averaged across examples
+    intra = max(len(counts), 1e-12) / max(sum(counts.values()), 1e-5)
+    return intra
+
+
+def _inter_distinct(guess, ngram=1):
+    """Compute inter-distinct."""
+    tokens = normalize_answer(guess).split()
+    return Counter(_ngram(tokens, ngram))
 
 
 def aggregate_metrics(reporters):
@@ -142,12 +195,33 @@ class Metrics(object):
         self.metrics = {}
         self.metrics['cnt'] = 0
         self.metrics_list = ['mean_rank', 'loss', 'correct', 'f1', 'ppl']
+
         if nltkbleu is not None:
             # only compute bleu if we can
-            self.metrics_list.append('bleu')
+            for i in range(1, 5):
+                self.metrics_list.append(f'bleu-{i}')
+        if rouge is not None:
+            # ROUGE-{1, 2, L}
+            self.metrics_list.append('rouge-1')
+            self.metrics_list.append('rouge-2')
+            self.metrics_list.append('rouge-l')
+        # Distinct
+        for i in range(1, 5):
+            self.metrics_list.append(f'intra-distinct-{i}')
+            self.metrics_list.append(f'inter-distinct-{i}')
+
+        self.crs_metrics = ['bleu', 'rouge', 'intra-distinct', 'inter-distinct']
         for k in self.metrics_list:
-            self.metrics[k] = 0.0
-            self.metrics[k + '_cnt'] = 0
+            if not k.startswith('inter-distinct'):
+                self.metrics[k] = 0.0
+            else:
+                self.metrics[k] = Counter()
+            if not any(k.startswith(prefix) for prefix in self.crs_metrics):
+                self.metrics[k + '_cnt'] = 0
+        for crs_metric in self.crs_metrics:
+            if crs_metric != 'inter-distinct':
+                self.metrics[crs_metric + "_cnt"] = 0
+        
         self.eval_pr = [1, 5, 10, 100]
         for k in self.eval_pr:
             self.metrics['hits@' + str(k)] = 0
@@ -214,15 +288,25 @@ class Metrics(object):
                 self.metrics['correct'] += correct
                 self.metrics['correct_cnt'] += 1
 
-            # F1 and BLEU metrics.
+            # F1, BLEU, ROUGE, intra/inter-distinct
             f1 = _f1_score(prediction, labels)
-            bleu = _bleu(prediction, labels)
             with self._lock():
                 self.metrics['f1'] += f1
                 self.metrics['f1_cnt'] += 1
-                if bleu is not None:
-                    self.metrics['bleu'] += bleu
-                    self.metrics['bleu_cnt'] += 1
+                if nltkbleu is not None:
+                    for i in range(1, 5):
+                        self.metrics[f'bleu-{i}'] += _bleu(prediction, labels, i)
+                    self.metrics[f'bleu_cnt'] += 1
+                if rouge is not None:
+                    rouge_scores = _rouge(prediction, labels)
+                    self.metrics['rouge-1'] += rouge_scores[0]
+                    self.metrics['rouge-2'] += rouge_scores[1]
+                    self.metrics['rouge-l'] += rouge_scores[2]
+                    self.metrics['rouge_cnt'] += 1
+                for i in range(1, 5):
+                    self.metrics[f'intra-distinct-{i}'] += _intra_distinct(prediction, i)
+                    self.metrics[f'inter-distinct-{i}'] += _inter_distinct(prediction, i)
+                self.metrics['intra-distinct_cnt'] += 1
 
         # Ranking metrics.
         self.update_ranking_metrics(observation, labels)
@@ -295,7 +379,12 @@ class Metrics(object):
                     self.metrics[k].zero_()
                 else:
                     self.metrics[k] = 0.0
-                self.metrics[k + '_cnt'] = 0
+                # TODO: 确认一下 inter-distinct 的计算方式
+                if not any(k.startswith(prefix) for prefix in self.crs_metrics):
+                    self.metrics[k + '_cnt'] = 0
+            for crs_metric in self.crs_metrics:
+                if crs_metric != 'inter-distinct':
+                    self.metrics[crs_metric + "_cnt"] = 0
             for k in self.eval_pr:
                 self.metrics['hits@' + str(k)] = 0
             self.metrics['hits@_cnt'] = 0

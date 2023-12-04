@@ -23,3 +23,4 @@ websocket-server
 gensim
 networkx
 tensorboardX
+py-rouge
