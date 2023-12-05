@@ -362,9 +362,14 @@ class Metrics(object):
                         3
                     )
             for k in self.metrics_list:
-                if self.metrics[k + '_cnt'] > 0 and k != 'correct' and k != 'f1':
+                if self.metrics[k + '_cnt'] > 0 and k != 'correct' and k != 'f1' and (not k.startswith('inter-distinct')):
                     m[k] = round_sigfigs(
                         self.metrics[k] / max(1, self.metrics[k + '_cnt']),
+                        4
+                    )
+                elif k.startswith('inter-distinct'):
+                    m[k] = round_sigfigs(
+                        max(float(len(self.metrics[k])), 1e-12) / max(sum(self.metrics[k].values()), 1e-5),
                         4
                     )
         return m
@@ -377,9 +382,10 @@ class Metrics(object):
                 v_typ = type(v)
                 if 'Tensor' in str(v_typ):
                     self.metrics[k].zero_()
+                elif k.startswith('inter-distinct'):
+                    self.metrics[k] = Counter()
                 else:
                     self.metrics[k] = 0.0
-                # TODO: 确认一下 inter-distinct 的计算方式
                 if not any(k.startswith(prefix) for prefix in self.crs_metrics):
                     self.metrics[k + '_cnt'] = 0
             for crs_metric in self.crs_metrics:
