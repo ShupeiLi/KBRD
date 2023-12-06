@@ -362,12 +362,12 @@ class Metrics(object):
                         3
                     )
             for k in self.metrics_list:
-                if self.metrics[k + '_cnt'] > 0 and k != 'correct' and k != 'f1' and (not k.startswith('inter-distinct')):
+                if (not k.startswith('inter-distinct')) and self.metrics[k.rsplit('-', 1)[0] + '_cnt'] > 0 and k != 'correct' and k != 'f1':
                     m[k] = round_sigfigs(
-                        self.metrics[k] / max(1, self.metrics[k + '_cnt']),
+                        self.metrics[k] / max(1, self.metrics[k.rsplit('-', 1)[0] + '_cnt']),
                         4
                     )
-                elif k.startswith('inter-distinct'):
+                elif k.startswith('inter-distinct') and len(self.metrics[k]) != 0:
                     m[k] = round_sigfigs(
                         max(float(len(self.metrics[k])), 1e-12) / max(sum(self.metrics[k].values()), 1e-5),
                         4
