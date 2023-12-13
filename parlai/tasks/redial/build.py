@@ -175,7 +175,7 @@ def build(opt):
                 if (name, year) in movie2entity:
                     id2entity[movie_id] = movie2entity[(name, year)]
                 else:
-                    if len(movie2years) == 1:
+                    if len(movie2years) == 1:  # TODO: Function?
                         id2entity[movie_id] = movie2entity[(name, movie2years[name][0])]
                     else:
                         id2entity[movie_id] = None
