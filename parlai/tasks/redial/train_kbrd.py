@@ -20,8 +20,8 @@ if __name__ == "__main__":
         model_file="saved/kbrd",
         fp16=True,
         batchsize=256,
-        n_entity=64368,
-        n_relation=214,
+        n_entity=64368,  # TODO: n-hop related hyperparameter
+        n_relation=214,  # TODO: n-hop related hyperparameter
         # validation_metric="recall@50",
         validation_metric="base_loss",
         validation_metric_mode='min',

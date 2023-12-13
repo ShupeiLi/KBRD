@@ -202,7 +202,7 @@ def build(opt):
                 for k in id2entity
                 if id2entity[k] is not None and kg[id2entity[k]] != []
             ],
-            2,
+            2,  # TODO: n-hop related hyperparameter
         )
         for movie_id in id2entity:
             if id2entity[movie_id] is not None:
@@ -230,6 +230,5 @@ def build(opt):
 
         # mark the data as built
         build_data.mark_done(dpath, version_string=version)
-
 
 # build({'datapath': './'})
